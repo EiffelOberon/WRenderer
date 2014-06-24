@@ -21,4 +21,8 @@ private:
 	void RenderLoop();
 
 	void Render();
+
+
+	sf::ContextSettings* settings;
+	sf::Window* window;
 };

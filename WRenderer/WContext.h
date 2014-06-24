@@ -28,8 +28,6 @@ protected:
 	virtual void CreateContext() = 0;
 
 	bool running;
-	sf::ContextSettings* settings;
-	sf::Window* window;
 
 	bool created;
 };

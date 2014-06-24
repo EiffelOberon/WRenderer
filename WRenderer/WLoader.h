@@ -58,5 +58,7 @@ private:
 	std::queue<std::shared_ptr<WLoadItem>> loadingQueue;
 
 	Assimp::Importer importer;
+
+	sf::Context* loadingContext;
 };
 

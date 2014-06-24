@@ -9,26 +9,22 @@
 
 WLoader::WLoader(bool& running) : WContext(running)
 {
-	settings = new sf::ContextSettings();
-	settings->depthBits = 0;
-	settings->stencilBits = 0;
-	settings->antialiasingLevel = 0;
-	settings->majorVersion = 4;
-	settings->minorVersion = 3;
-
 	CreateContext();
 }
 
 WLoader::~WLoader()
 {
-	delete window;
-	delete settings;
+	loadingContext->setActive(false);
+	delete loadingContext;
 }
 
 void WLoader::CreateContext()
 {
 	//create window
-	window = new sf::Window (sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "OpenGL", sf::Style::Default, *settings);
+	loadingContext = new sf::Context();
+	loadingContext->setActive(true);
+
+	/*window = new sf::Window (sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "OpenGL", sf::Style::Default, *settings);
 
 	window->setVerticalSyncEnabled(false);
 	window->setActive(false);
@@ -49,7 +45,7 @@ void WLoader::CreateContext()
 
 		std::cerr << "GL_" << error.c_str()<<std::endl;
 		err=glGetError();
-	}
+	}*/
 
 	created = true;
 
@@ -66,9 +62,7 @@ void WLoader::Loop()
 			{
 				std::shared_ptr<WLoadItem> loadItem = loadingQueue.front();
 
-				window->setActive(true);
 				Import3DFromFile(loadItem->GetPath().c_str());
-				window->setActive(false);
 
 				loadingQueue.pop();
 			}
@@ -96,7 +90,8 @@ bool WLoader::Import3DFromFile(const std::string& pFile)
 	}
 
 
-	const aiScene* scene = importer.ReadFile( pFile, aiProcessPreset_TargetRealtime_Quality);
+	const aiScene* scene = importer.ReadFile( pFile, aiProcess_GenSmoothNormals | 
+														aiProcess_Triangulate);
 	if(!scene)
 	{
 		std::cout<< (importer.GetErrorString()) << std::endl;

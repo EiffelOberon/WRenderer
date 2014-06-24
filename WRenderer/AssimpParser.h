@@ -8,6 +8,9 @@
 #include "assimp/DefaultLogger.hpp"
 #include "assimp/LogStream.hpp"
 
+#include "SceneNode.h"
+#include "SceneMesh.h"
+
 class AssimpParser
 {
 public:
@@ -18,6 +21,10 @@ public:
 
 private:
 	void LoadTextures();
+	void LoadModel();
+	void ParseModel(aiNode* node, std::shared_ptr<SceneNode> sceneNode);
+	void ParseMesh(std::shared_ptr<SceneMesh> sceneMesh, aiMesh* mesh);
+
 	std::string GetBasePath(const std::string& path);
 
 	const aiScene* scene;

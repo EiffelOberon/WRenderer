@@ -5,7 +5,7 @@
 
 #include <IL/il.h>
 
-
+#include <memory>
 
 AssimpParser::AssimpParser(const aiScene* scene, const std::string& path)
 {
@@ -21,6 +21,7 @@ AssimpParser::~AssimpParser()
 void AssimpParser::Parse()
 {
 	LoadTextures();
+	LoadModel();
 }
 
 void AssimpParser::LoadTextures()
@@ -111,10 +112,120 @@ void AssimpParser::LoadTextures()
 				ilGetInteger(IL_IMAGE_HEIGHT), 0, ilGetInteger(IL_IMAGE_FORMAT), GL_UNSIGNED_BYTE,
 				ilGetData()); /* Texture specification */
 			e = glGetError();
+
+			glBindTexture(GL_TEXTURE_2D, 0);
 		}
+
+		ilBindImage(0);
+	}
+
+	ilDeleteImages(numTextures, imageIds); /* Because we have already copied image data into texture data we can release memory used by image. */
+
+	//Cleanup
+	delete [] imageIds;
+	imageIds = NULL;
+}
+
+void AssimpParser::LoadModel()
+{
+	aiNode* root = scene->mRootNode;
+	ParseModel(root, nullptr);
+
+}
+
+void AssimpParser::ParseModel(aiNode* node, std::shared_ptr<SceneNode> sceneNode)
+{
+	std::shared_ptr<SceneNode> newNode = std::shared_ptr<SceneNode>(new SceneNode(std::string(node->mName.C_Str())));
+
+	for(int i=0; i<node->mNumMeshes; i++)
+	{
+		int meshIndex = node->mMeshes[i];
+		aiMesh* mesh = scene->mMeshes[meshIndex];
+
+		std::shared_ptr<SceneMesh> newMesh = std::shared_ptr<SceneMesh>(new SceneMesh());
+		newNode->AddMesh(newMesh);
+
+		ParseMesh(newMesh, mesh);
+	}
+
+	if(sceneNode != nullptr)
+	{
+		sceneNode->AddChild(newNode);
+	}
+
+	for(int i=0; i<node->mNumChildren; i++)
+	{
+		aiNode* child = node->mChildren[i];		
+		ParseModel(child, newNode);
 	}
 }
 
+
+void AssimpParser::ParseMesh(std::shared_ptr<SceneMesh> sceneMesh, aiMesh* mesh)
+{
+	int indexArraySize = mesh->mNumFaces * 3;
+	sceneMesh->CreateIndexArray(indexArraySize);
+
+	int count = 0;
+
+	for(int i=0; i<mesh->mNumFaces; i++)
+	{
+		aiFace face = mesh->mFaces[i];
+		assert(face.mNumIndices == 3);
+
+		for(int j=0; j<face.mNumIndices; j++)
+		{
+			sceneMesh->SetIndexArray(count, face.mIndices[j]);
+			count++;
+		}
+	}
+
+	int vboSize = mesh->mNumVertices * 3;
+	sceneMesh->CreateVertexArray(vboSize);
+
+	count = 0;
+	int uvCount = 0;
+	for(int i=0; i<mesh->mNumVertices; i++)
+	{
+		aiVector3D vertex = mesh->mVertices[i];
+		aiVector3D normal = mesh->mNormals[i];
+		for(int j=0; i<3; i++)
+		{
+			if(j == 0) 
+			{
+				sceneMesh->SetVertexArray(count, vertex.x);
+				sceneMesh->SetNormalArray(count, normal.x);
+			}
+			else if(j == 1) 
+			{
+				sceneMesh->SetVertexArray(count, vertex.y);
+				sceneMesh->SetNormalArray(count, normal.y);
+			}
+			else if(j == 2) 
+			{
+				sceneMesh->SetVertexArray(count, vertex.z);
+				sceneMesh->SetNormalArray(count, normal.z);
+			}
+			count++;
+		}
+
+		aiVector3D* texCoord = mesh->mTextureCoords[0];
+		for(int j=0; j<2; j++)
+		{
+			if(j == 0) 
+			{
+				sceneMesh->SetUVArray(count, texCoord->x);
+			}
+			else if(j == 1) 
+			{
+				sceneMesh->SetUVArray(count, texCoord->y);
+			}
+			uvCount++;
+		}
+	}
+
+	sceneMesh->GenVBO();
+}
 
 std::string AssimpParser::GetBasePath(const std::string& path)
 {
